@@ -99,4 +99,8 @@ public class CouchbaseSubScan extends AbstractBase implements SubScan {
     return 2001;
   }
 
+  public String getBucket() {
+    return bucket;
+  }
+
 }

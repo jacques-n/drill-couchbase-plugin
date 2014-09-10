@@ -4,7 +4,7 @@
       type:"couchbase",
       enabled: true,
       uris: [
-        "http://192.168.168.91:8091"
+        "http://127.0.0.1:8091"
       ],
       username: "drill",
       password: "drillit"

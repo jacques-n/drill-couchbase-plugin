@@ -17,16 +17,19 @@
  */
 package org.apache.drill.exec.store.couchbase;
 
-import org.apache.drill.common.expression.SchemaPath;
-import org.apache.drill.common.types.TypeProtos.MajorType;
-import org.apache.drill.common.types.TypeProtos.MinorType;
-import org.apache.drill.common.types.Types;
+import org.apache.drill.BaseTestQuery;
+import org.junit.Test;
 
-public interface DrillCouchbaseConstants {
-  public static final String KEY_NAME = "key";
-  public static final String KEY_VALUE = "row_value";
+public class TestCouchbasePlugin extends BaseTestQuery {
+  static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(TestCouchbasePlugin.class);
 
-  public static final SchemaPath KEY_PATH = SchemaPath.getSimplePath(KEY_NAME);
-  public static final MajorType DATA_TYPE = Types.required(MinorType.VARBINARY);
-  public static final MajorType COLUMN_TYPE = Types.optional(MinorType.VARBINARY);
+  @Test
+  public void testListBuckets() throws Exception{
+    test("use couchbase;");
+    test("show tables;");
+    test("select key, b.row_val.name, b.row_val.abv, b.row_val.type"
+        + " from (select key, convert_from(row_value, 'JSON') as row_val from `beer-sample`) b"
+        + " where b.row_val.abv > 5 limit 25;");
+  }
+
 }

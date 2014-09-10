@@ -17,11 +17,16 @@
  */
 package org.apache.drill.exec.store.couchbase;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-import com.couchbase.client.TapClient;
+import javax.naming.ConfigurationException;
+
 import net.spy.memcached.tapmessage.ResponseMessage;
+import net.spy.memcached.tapmessage.TapStream;
+
 import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.common.types.TypeProtos.MinorType;
 import org.apache.drill.common.types.Types;
@@ -34,6 +39,9 @@ import org.apache.drill.exec.store.AbstractRecordReader;
 import org.apache.drill.exec.vector.VarBinaryVector;
 import org.apache.drill.exec.vector.VarCharVector;
 
+import com.couchbase.client.TapClient;
+import com.google.common.base.Stopwatch;
+
 public class CouchbaseRecordReader extends AbstractRecordReader implements DrillCouchbaseConstants {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseRecordReader.class);
 
@@ -45,14 +53,18 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
   VarBinaryVector valueVector;
 
   private ResponseMessage leftOver;
-  private FragmentContext context;
+
   private OperatorContext operatorContext;
 
   private TapClient tapClient;
 
-  public CouchbaseRecordReader(FragmentContext context, List<URI> uris, String bucket, String pwd) {
-    this.context = context;
-    tapClient = new TapClient(uris, bucket, pwd);
+  private List<URI> uris;
+
+  private String bucket;
+
+  public CouchbaseRecordReader(FragmentContext context, List<URI> uris, String bucket) {
+    this.uris = uris;
+    this.bucket = bucket;
   }
 
   public OperatorContext getOperatorContext() {
@@ -67,35 +79,39 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
   @Override
   public void setup(OutputMutator output) throws ExecutionSetupException {
     this.outputMutator = output;
+    tapClient = new TapClient(uris, bucket, "");
     try {
+      @SuppressWarnings("unused")
+      TapStream testing = tapClient.tapDump("testing");
       MaterializedField keyField = MaterializedField.create("key", Types.required(MinorType.VARCHAR));
       keyVector = outputMutator.addField(keyField, VarCharVector.class);
-      MaterializedField valueField = MaterializedField.create("value", Types.required(MinorType.VARBINARY));
+      MaterializedField valueField = MaterializedField.create("row_value", Types.required(MinorType.VARBINARY));
       valueVector = outputMutator.addField(valueField, VarBinaryVector.class);
-    } catch (SchemaChangeException  e) {
+    } catch (SchemaChangeException | ConfigurationException | IOException  e) {
       throw new ExecutionSetupException(e);
     }
   }
 
   @Override
   public int next() {
+    Stopwatch watch = new Stopwatch();
+    watch.start();
+
     keyVector.clear();
     keyVector.allocateNew();
     valueVector.clear();
     valueVector.allocateNew();
-
     int rowCount = 0;
     done:
-    for (; rowCount < TARGET_RECORD_COUNT && tapClient.hasMoreMessages(); rowCount++) {
+    for (; rowCount < TARGET_RECORD_COUNT && tapClient.hasMoreMessages();) {
       ResponseMessage message = null;
       if (leftOver != null) {
         message = leftOver;
         leftOver = null;
       } else {
-        message = tapClient.getNextMessage();
-      }
-      if (message == null) {
-        break done;
+        if ((message = tapClient.getNextMessage()) == null) {
+          continue;
+        }
       }
 
       if (!keyVector.getMutator().setSafe(rowCount, message.getKey().getBytes())) {
@@ -110,9 +126,11 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
         break done;
       }
 
+      rowCount++;
     }
 
     setOutputRowCount(rowCount);
+    logger.debug("Took {} ms to get {} records", watch.elapsed(TimeUnit.MILLISECONDS), rowCount);
     return rowCount;
   }
 

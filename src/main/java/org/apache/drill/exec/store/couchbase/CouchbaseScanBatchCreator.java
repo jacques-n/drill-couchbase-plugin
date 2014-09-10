@@ -40,9 +40,8 @@ public class CouchbaseScanBatchCreator implements BatchCreator<CouchbaseSubScan>
     List<RecordReader> readers = Lists.newArrayList();
     try {
       List<URI> uris = subScan.getStorageConfig().getUrisAsURIs();
-      String bucket = subScan.getStorageConfig().getPassword();
-      String pwd = subScan.getStorageConfig().getPassword();
-      readers.add(new CouchbaseRecordReader(context, uris, bucket, pwd));
+      String bucket = subScan.getBucket();
+      readers.add(new CouchbaseRecordReader(context, uris, bucket));
     } catch (URISyntaxException e) {
       throw new ExecutionSetupException(e);
     }
