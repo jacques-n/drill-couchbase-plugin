@@ -18,19 +18,17 @@
 package org.apache.drill.exec.store.couchbase;
 
 import java.io.IOException;
-import java.util.Set;
 
 import net.hydromatic.optiq.SchemaPlus;
 
 import org.apache.drill.common.JSONOptions;
+import org.apache.drill.common.exceptions.ExecutionSetupException;
 import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.server.DrillbitContext;
 import org.apache.drill.exec.store.AbstractStoragePlugin;
-import org.apache.drill.exec.store.StoragePluginOptimizerRule;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableSet;
 
 public class CouchbaseStoragePlugin extends AbstractStoragePlugin {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseStoragePlugin.class);
@@ -62,7 +60,11 @@ public class CouchbaseStoragePlugin extends AbstractStoragePlugin {
   @Override
   public CouchbaseGroupScan getPhysicalScan(JSONOptions selection) throws IOException {
     CouchbaseScanSpec scanSpec = selection.getListWith(new ObjectMapper(), new TypeReference<CouchbaseScanSpec>() {});
-    return new CouchbaseGroupScan(this, scanSpec, null);
+    try {
+      return new CouchbaseGroupScan(null, null, null);
+    } catch (ExecutionSetupException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override
@@ -73,10 +75,6 @@ public class CouchbaseStoragePlugin extends AbstractStoragePlugin {
   @Override
   public CouchbaseStoragePluginConfig getConfig() {
     return engineConfig;
-  }
-
-  public Set<StoragePluginOptimizerRule> getOptimizerRules() {
-    return ImmutableSet.of(CouchbasePushFilterIntoScan.INSTANCE);
   }
 
 }

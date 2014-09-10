@@ -20,9 +20,7 @@ package org.apache.drill.exec.store.couchbase;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.expression.SchemaPath;
 import org.apache.drill.exec.ops.FragmentContext;
-import org.apache.drill.exec.physical.base.GroupScan;
 import org.apache.drill.exec.physical.impl.BatchCreator;
 import org.apache.drill.exec.physical.impl.ScanBatch;
 import org.apache.drill.exec.record.RecordBatch;
@@ -38,17 +36,6 @@ public class CouchbaseScanBatchCreator implements BatchCreator<CouchbaseSubScan>
   public RecordBatch getBatch(FragmentContext context, CouchbaseSubScan subScan, List<RecordBatch> children) throws ExecutionSetupException {
     Preconditions.checkArgument(children.isEmpty());
     List<RecordReader> readers = Lists.newArrayList();
-    List<SchemaPath> columns = null;
-    for(CouchbaseSubScan.HBaseSubScanSpec scanSpec : subScan.getRegionScanSpecList()){
-      try {
-        if ((columns = subScan.getColumns())==null) {
-          columns = GroupScan.ALL_COLUMNS;
-        }
-        readers.add(new CouchbaseRecordReader(subScan.getStorageConfig().getHBaseConf(), scanSpec, columns, context));
-      } catch (Exception e1) {
-        throw new ExecutionSetupException(e1);
-      }
-    }
     return new ScanBatch(subScan, context, readers.iterator());
   }
 

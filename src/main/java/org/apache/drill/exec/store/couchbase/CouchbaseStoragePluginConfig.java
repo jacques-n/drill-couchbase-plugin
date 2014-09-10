@@ -85,7 +85,8 @@ public class CouchbaseStoragePluginConfig extends StoragePluginConfigBase implem
     return true;
   }
 
-  @JsonIgnore List<URI> getUrisAsURIs() throws URISyntaxException{
+  @JsonIgnore 
+  List<URI> getUrisAsURIs() throws URISyntaxException{
     List<URI> u = Lists.newArrayListWithCapacity(this.uris.size());
     for(String str : uris){
       u.add((new URI(str)));

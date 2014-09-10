@@ -18,6 +18,7 @@
 package org.apache.drill.exec.store.couchbase;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.Set;
 
@@ -28,12 +29,9 @@ import net.hydromatic.optiq.Table;
 import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.store.SchemaFactory;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 
 import com.couchbase.client.ClusterManager;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
 
 public class CouchbaseSchemaFactory implements SchemaFactory {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseSchemaFactory.class);
@@ -80,22 +78,15 @@ public class CouchbaseSchemaFactory implements SchemaFactory {
 
     @Override
     public Set<String> getTableNames() {
-      ClusterManager cm = new ClusterManager(
-          plugin.getConfig().getUrisAsURIs(),
-          plugin.getConfig().getUsername(),
-          plugin.getConfig().getPassword());
-
-      try(HBaseAdmin admin = new HBaseAdmin(plugin.getConfig().getHBaseConf())) {
-        HTableDescriptor[] tables = admin.listTables();
-        Set<String> tableNames = Sets.newHashSet();
-        for (HTableDescriptor table : tables) {
-          tableNames.add(new String(table.getName()));
-        }
-        return tableNames;
-      } catch (Exception e) {
-        logger.warn("Failure while loading table names for database '{}'.", schemaName, e.getCause());
-        return Collections.emptySet();
+      try {
+        ClusterManager cm = new ClusterManager(
+            plugin.getConfig().getUrisAsURIs(),
+            plugin.getConfig().getUsername(),
+            plugin.getConfig().getPassword());
+      } catch (URISyntaxException e) {
       }
+
+      return Collections.emptySet();
     }
 
     @Override

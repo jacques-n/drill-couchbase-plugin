@@ -18,13 +18,15 @@
 package org.apache.drill.exec.store.couchbase;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 
+import org.apache.drill.common.exceptions.DrillRuntimeException;
 import org.apache.drill.exec.planner.logical.DrillTable;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.eigenbase.reltype.RelDataType;
 import org.eigenbase.reltype.RelDataTypeFactory;
 import org.eigenbase.sql.type.SqlTypeName;
@@ -34,29 +36,29 @@ import com.couchbase.client.CouchbaseClient;
 public class DrillCouchbaseTable extends DrillTable implements DrillCouchbaseConstants {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillCouchbaseTable.class);
 
-  private HTableDescriptor table;
-
   public DrillCouchbaseTable(String storageEngineName, CouchbaseStoragePlugin plugin, CouchbaseScanSpec scanSpec) {
     super(storageEngineName, plugin, scanSpec);
-    List<URI> hosts = Arrays.asList(
-        new URI("http://127.0.0.1:8091/pools")
-      );
+    try {
+      List<URI> hosts = Arrays.asList(
+          new URI("http://127.0.0.1:8091/pools")
+        );
 
-    // Name of the Bucket to connect to
-    String bucket = "default";
+      // Name of the Bucket to connect to
+      String bucket = "default";
 
-    // Password of the bucket (empty) string if none
-    String password = "";
-    CouchbaseClient client = new CouchbaseClient(hosts, bucket, password);
-    client.
-    // Store a Document
-    client.set("my-first-document", "Hello Couchbase!").get();
+      // Password of the bucket (empty) string if none
+      String password = "";
+      CouchbaseClient client = new CouchbaseClient(hosts, bucket, password);
+      client.set("my-first-document", "Hello Couchbase!").get();
 
-    // Retreive the Document and print it
-    System.out.println(client.get("my-first-document"));
+      // Retreive the Document and print it
+      System.out.println(client.get("my-first-document"));
 
-    // Shutting down properly
-    client.shutdown();
+      // Shutting down properly
+      client.shutdown();
+    } catch (URISyntaxException | IOException | InterruptedException | ExecutionException e) {
+      throw new DrillRuntimeException(e);
+    }
 
   }
 
@@ -65,16 +67,16 @@ public class DrillCouchbaseTable extends DrillTable implements DrillCouchbaseCon
     ArrayList<RelDataType> typeList = new ArrayList<>();
     ArrayList<String> fieldNameList = new ArrayList<>();
 
-    fieldNameList.add(CouchbaseConstants.KEY);
+    fieldNameList.add(KEY_NAME);
     typeList.add(typeFactory.createSqlType(SqlTypeName.ANY));
-    fieldNameList.add(VALUE);
+    fieldNameList.add(KEY_VALUE);
     typeList.add(typeFactory.createSqlType(SqlTypeName.ANY));
 
-    Set<byte[]> families = table.getFamiliesKeys();
-    for (byte[] family : families) {
-      fieldNameList.add(Bytes.toString(family));
-      typeList.add(typeFactory.createMapType(typeFactory.createSqlType(SqlTypeName.VARCHAR), typeFactory.createSqlType(SqlTypeName.ANY)));
-    }
+//    Set<byte[]> families = table.getFamiliesKeys();
+//    for (byte[] family : families) {
+//      fieldNameList.add(Bytes.toString(family));
+//      typeList.add(typeFactory.createMapType(typeFactory.createSqlType(SqlTypeName.VARCHAR), typeFactory.createSqlType(SqlTypeName.ANY)));
+//    }
     return typeFactory.createStructType(typeList, fieldNameList);
   }
 
