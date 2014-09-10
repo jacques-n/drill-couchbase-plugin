@@ -17,18 +17,21 @@
  */
 package org.apache.drill.exec.store.couchbase;
 
+import java.net.URI;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
+import com.couchbase.client.TapClient;
+import net.spy.memcached.tapmessage.ResponseMessage;
 import org.apache.drill.common.exceptions.ExecutionSetupException;
-import org.apache.drill.common.expression.SchemaPath;
-import org.apache.drill.exec.memory.OutOfMemoryException;
+import org.apache.drill.common.types.TypeProtos.MinorType;
+import org.apache.drill.common.types.Types;
+import org.apache.drill.exec.exception.SchemaChangeException;
 import org.apache.drill.exec.ops.FragmentContext;
 import org.apache.drill.exec.ops.OperatorContext;
 import org.apache.drill.exec.physical.impl.OutputMutator;
 import org.apache.drill.exec.store.AbstractRecordReader;
-
-import com.google.common.base.Stopwatch;
+import org.apache.drill.exec.vector.VarBinaryVector;
+import org.apache.drill.exec.vector.VarCharVector;
 
 public class CouchbaseRecordReader extends AbstractRecordReader implements DrillCouchbaseConstants {
   private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseRecordReader.class);
@@ -36,14 +39,19 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
   private static final int TARGET_RECORD_COUNT = 4000;
 
   private OutputMutator outputMutator;
-  private FragmentContext fragmentContext;
+
+  VarCharVector keyVector;
+  VarBinaryVector valueVector;
+
+  private ResponseMessage leftOver;
+  private FragmentContext context;
   private OperatorContext operatorContext;
 
+  private TapClient tapClient;
 
-  public CouchbaseRecordReader(CouchbaseSubScan subScanSpec,
-      List<SchemaPath> projectedColumns, FragmentContext context) throws OutOfMemoryException {
-    fragmentContext = context;
-    setColumns(projectedColumns);
+  public CouchbaseRecordReader(FragmentContext context, List<URI> uris, String bucket, String pwd) {
+    this.context = context;
+    tapClient = new TapClient(uris, bucket, pwd);
   }
 
   public OperatorContext getOperatorContext() {
@@ -58,24 +66,64 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
   @Override
   public void setup(OutputMutator output) throws ExecutionSetupException {
     this.outputMutator = output;
+    try {
+      MaterializedField keyField = MaterializedField.create("key", Types.required(MinorType.VARCHAR));
+      keyVector = outputMutator.addField(keyField, VarCharVector.class);
+      MaterializedField valueField = MaterializedField.create("value", Types.required(MinorType.VARBINARY));
+      valueVector = outputMutator.addField(valueField, VarBinaryVector.class);
+    } catch (SchemaChangeException  e) {
+      throw new ExecutionSetupException(e);
+    }
   }
 
   @Override
   public int next() {
-    Stopwatch watch = new Stopwatch();
-    watch.start();
+    keyVector.clear();
+    keyVector.allocateNew();
+    valueVector.clear();
+    valueVector.allocateNew();
 
     int rowCount = 0;
-    for (; rowCount < TARGET_RECORD_COUNT; rowCount++) {
-      break;
+    done:
+    for (; rowCount < TARGET_RECORD_COUNT && tapClient.hasMoreMessages(); rowCount++) {
+      ResponseMessage message = null;
+      if (leftOver != null) {
+        message = leftOver;
+        leftOver = null;
+      } else {
+        message = tapClient.getNextMessage();
+      }
+      if (message == null) {
+        break done;
+      }
+
+      if (!keyVector.getMutator().setSafe(rowCount, message.getKey().getBytes())) {
+        setOutputRowCount(rowCount);
+        leftOver = message;
+        break done;
+      }
+
+      if (!valueVector.getMutator().setSafe(rowCount, message.getValue())) {
+        setOutputRowCount(rowCount);
+        leftOver = message;
+        break done;
+      }
+
     }
 
-    logger.debug("Took {} ms to get {} records", watch.elapsed(TimeUnit.MILLISECONDS), rowCount);
+    setOutputRowCount(rowCount);
     return rowCount;
   }
 
+
   @Override
   public void cleanup() {
+    tapClient.shutdown();
+  }
+
+  private void setOutputRowCount(int count) {
+    keyVector.getMutator().setValueCount(count);
+    valueVector.getMutator().setValueCount(count);
   }
 
 }
