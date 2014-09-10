@@ -17,20 +17,17 @@
  */
 package org.apache.drill.exec.store.couchbase;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.drill.common.logical.StoragePluginConfigBase;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 
 @JsonTypeName(CouchbaseStoragePluginConfig.NAME)
 public class CouchbaseStoragePluginConfig extends StoragePluginConfigBase implements DrillCouchbaseConstants {
@@ -86,6 +83,14 @@ public class CouchbaseStoragePluginConfig extends StoragePluginConfigBase implem
     } else if (!username.equals(other.username))
       return false;
     return true;
+  }
+
+  @JsonIgnore List<URI> getUrisAsURIs() throws URISyntaxException{
+    List<URI> u = Lists.newArrayListWithCapacity(this.uris.size());
+    for(String str : uris){
+      u.add((new URI(str)));
+    }
+    return u;
   }
 
   public List<String> getUris() {

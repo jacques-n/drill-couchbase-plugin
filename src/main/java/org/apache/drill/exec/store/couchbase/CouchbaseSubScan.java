@@ -40,7 +40,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
 
-@JsonTypeName("couchbase-region-scan")
+@JsonTypeName("couchbase-partition-scan")
 public class CouchbaseSubScan extends AbstractBase implements SubScan {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseSubScan.class);
 

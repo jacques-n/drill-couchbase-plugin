@@ -31,6 +31,7 @@ import org.apache.drill.exec.store.SchemaFactory;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 
+import com.couchbase.client.ClusterManager;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 
@@ -47,14 +48,14 @@ public class CouchbaseSchemaFactory implements SchemaFactory {
 
   @Override
   public void registerSchemas(UserSession session, SchemaPlus parent) {
-    HBaseSchema schema = new HBaseSchema(schemaName);
+    CouchbaseSchema schema = new CouchbaseSchema(schemaName);
     SchemaPlus hPlus = parent.add(schemaName, schema);
     schema.setHolder(hPlus);
   }
 
-  class HBaseSchema extends AbstractSchema {
+  class CouchbaseSchema extends AbstractSchema {
 
-    public HBaseSchema(String name) {
+    public CouchbaseSchema(String name) {
       super(ImmutableList.<String>of(), name);
     }
 
@@ -79,6 +80,11 @@ public class CouchbaseSchemaFactory implements SchemaFactory {
 
     @Override
     public Set<String> getTableNames() {
+      ClusterManager cm = new ClusterManager(
+          plugin.getConfig().getUrisAsURIs(),
+          plugin.getConfig().getUsername(),
+          plugin.getConfig().getPassword());
+
       try(HBaseAdmin admin = new HBaseAdmin(plugin.getConfig().getHBaseConf())) {
         HTableDescriptor[] tables = admin.listTables();
         Set<String> tableNames = Sets.newHashSet();
