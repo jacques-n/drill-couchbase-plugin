@@ -60,11 +60,7 @@ public class CouchbaseStoragePlugin extends AbstractStoragePlugin {
   @Override
   public CouchbaseGroupScan getPhysicalScan(JSONOptions selection) throws IOException {
     CouchbaseScanSpec scanSpec = selection.getListWith(new ObjectMapper(), new TypeReference<CouchbaseScanSpec>() {});
-    try {
-      return new CouchbaseGroupScan(null, null, null);
-    } catch (ExecutionSetupException e) {
-      throw new IOException(e);
-    }
+    return new CouchbaseGroupScan(this, scanSpec.bucket);
   }
 
   @Override

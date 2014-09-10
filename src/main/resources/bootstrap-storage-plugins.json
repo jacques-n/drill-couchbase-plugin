@@ -1,12 +1,13 @@
 {
   "storage":{
-    hbase : {
-      type:"hbase",
-      enabled: false,
-      config : {
-        "hbase.zookeeper.quorum" : "localhost",
-        "hbase.zookeeper.property.clientPort" : 2181
-      }
+    couchbase : {
+      type:"couchbase",
+      enabled: true,
+      uris: [
+        "http://192.168.168.91:8091"
+      ],
+      username: "drill",
+      password: "drillit"
     }
   }
 }

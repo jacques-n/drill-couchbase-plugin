@@ -20,6 +20,7 @@ package org.apache.drill.exec.store.couchbase;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import net.hydromatic.optiq.Schema;
@@ -30,6 +31,7 @@ import org.apache.drill.exec.rpc.user.UserSession;
 import org.apache.drill.exec.store.AbstractSchema;
 import org.apache.drill.exec.store.SchemaFactory;
 
+import com.beust.jcommander.internal.Sets;
 import com.couchbase.client.ClusterManager;
 import com.google.common.collect.ImmutableList;
 
@@ -54,7 +56,7 @@ public class CouchbaseSchemaFactory implements SchemaFactory {
   class CouchbaseSchema extends AbstractSchema {
 
     public CouchbaseSchema(String name) {
-      super(ImmutableList.<String>of(), name);
+      super(ImmutableList.<String> of(), name);
     }
 
     public void setHolder(SchemaPlus plusOfThis) {
@@ -78,15 +80,22 @@ public class CouchbaseSchemaFactory implements SchemaFactory {
 
     @Override
     public Set<String> getTableNames() {
+      ClusterManager cm = null;
       try {
-        ClusterManager cm = new ClusterManager(
-            plugin.getConfig().getUrisAsURIs(),
-            plugin.getConfig().getUsername(),
-            plugin.getConfig().getPassword());
+        cm = new ClusterManager(plugin.getConfig().getUrisAsURIs(), plugin.getConfig().getUsername(), plugin
+            .getConfig().getPassword());
+        List<String> buckets = cm.listBuckets();
+        Set<String> bucketSet = Sets.newHashSet();
+        bucketSet.addAll(buckets);
+        return bucketSet;
       } catch (URISyntaxException e) {
+        throw new IllegalStateException("Failure getting tables.", e);
+      } finally {
+        if (cm != null) {
+          cm.shutdown();
+        }
       }
 
-      return Collections.emptySet();
     }
 
     @Override
