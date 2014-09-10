@@ -1,12 +1,21 @@
-*.class
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.ear
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
+.project
+.buildpath
+.classpath
+.checkstyle
+.settings/
+.idea/
+*.log
+*.lck
+*.iml
+target/
+*.DS_Store
+*.patch
+*~
+git.properties
+contrib/native/client/build/
+contrib/native/client/build/*
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
