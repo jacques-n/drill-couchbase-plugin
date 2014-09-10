@@ -17,6 +17,8 @@
  */
 package org.apache.drill.exec.store.couchbase;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 import org.apache.drill.common.exceptions.ExecutionSetupException;
@@ -36,6 +38,14 @@ public class CouchbaseScanBatchCreator implements BatchCreator<CouchbaseSubScan>
   public RecordBatch getBatch(FragmentContext context, CouchbaseSubScan subScan, List<RecordBatch> children) throws ExecutionSetupException {
     Preconditions.checkArgument(children.isEmpty());
     List<RecordReader> readers = Lists.newArrayList();
+    try {
+      List<URI> uris = subScan.getStorageConfig().getUrisAsURIs();
+      String bucket = subScan.getStorageConfig().getPassword();
+      String pwd = subScan.getStorageConfig().getPassword();
+      readers.add(new CouchbaseRecordReader(context, uris, bucket, pwd));
+    } catch (URISyntaxException e) {
+      throw new ExecutionSetupException(e);
+    }
     return new ScanBatch(subScan, context, readers.iterator());
   }
 
