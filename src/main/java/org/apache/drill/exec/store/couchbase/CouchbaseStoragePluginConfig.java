@@ -17,6 +17,7 @@
  */
 package org.apache.drill.exec.store.couchbase;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.drill.common.logical.StoragePluginConfigBase;
@@ -30,78 +31,73 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 
 @JsonTypeName(CouchbaseStoragePluginConfig.NAME)
 public class CouchbaseStoragePluginConfig extends StoragePluginConfigBase implements DrillCouchbaseConstants {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseStoragePluginConfig.class);
 
-  private Map<String, String> config;
+  private List<String> uris;
+  private String username;
+  private String password;
 
-  @JsonIgnore
-  private Configuration hbaseConf;
-
-  public static final String NAME = "hbase";
+  public static final String NAME = "couchbase";
 
   @JsonCreator
-  public CouchbaseStoragePluginConfig(@JsonProperty("config") Map<String, String> props) {
-    this.config = props;
-    if (config == null) {
-      config = Maps.newHashMap();
-    }
-    logger.debug("Initializing HBase StoragePlugin configuration with zookeeper quorum '{}', port '{}'.",
-        config.get(HConstants.ZOOKEEPER_QUORUM), config.get(HBASE_ZOOKEEPER_PORT));
-  }
-
-  @JsonProperty
-  public Map<String, String> getConfig() {
-    return ImmutableMap.copyOf(config);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    } else if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    CouchbaseStoragePluginConfig that = (CouchbaseStoragePluginConfig) o;
-    return config.equals(that.config);
+  public CouchbaseStoragePluginConfig(@JsonProperty("uris") List<String> uris, @JsonProperty("login") String username,
+      @JsonProperty("password") String password) {
+    this.uris = uris;
+    this.username = username;
+    this.password = password;
   }
 
   @Override
   public int hashCode() {
-    return this.config != null ? this.config.hashCode() : 0;
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((password == null) ? 0 : password.hashCode());
+    result = prime * result + ((uris == null) ? 0 : uris.hashCode());
+    result = prime * result + ((username == null) ? 0 : username.hashCode());
+    return result;
   }
 
-  @JsonIgnore
-  public Configuration getHBaseConf() {
-    if (hbaseConf == null) {
-      hbaseConf = HBaseConfiguration.create();
-      if (config != null) {
-        for (Map.Entry<String, String> entry : config.entrySet()) {
-          hbaseConf.set(entry.getKey(), entry.getValue());
-        }
-      }
-    }
-    return hbaseConf;
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    CouchbaseStoragePluginConfig other = (CouchbaseStoragePluginConfig) obj;
+    if (password == null) {
+      if (other.password != null)
+        return false;
+    } else if (!password.equals(other.password))
+      return false;
+    if (uris == null) {
+      if (other.uris != null)
+        return false;
+    } else if (!uris.equals(other.uris))
+      return false;
+    if (username == null) {
+      if (other.username != null)
+        return false;
+    } else if (!username.equals(other.username))
+      return false;
+    return true;
   }
 
-  @JsonIgnore
-  public String getZookeeperQuorum() {
-    return getHBaseConf().get(HConstants.ZOOKEEPER_QUORUM);
+  public List<String> getUris() {
+    return uris;
   }
 
-  @JsonIgnore
-  public String getZookeeperport() {
-    return getHBaseConf().get(HBASE_ZOOKEEPER_PORT);
+  public String getUsername() {
+    return username;
   }
 
-  @JsonIgnore
-  @VisibleForTesting
-  public void setZookeeperPort(int zookeeperPort) {
-    this.config.put(HBASE_ZOOKEEPER_PORT, String.valueOf(zookeeperPort));
-    getHBaseConf().setInt(HBASE_ZOOKEEPER_PORT, zookeeperPort);
+  public String getPassword() {
+    return password;
   }
 
 }

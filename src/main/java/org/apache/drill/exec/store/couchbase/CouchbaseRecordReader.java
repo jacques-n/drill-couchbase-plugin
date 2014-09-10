@@ -95,7 +95,7 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
       boolean rowKeyOnly = true;
       for (SchemaPath column : columns) {
         if (column.getRootSegment().getPath().equalsIgnoreCase(ROW_KEY)) {
-          transformed.add(ROW_KEY_PATH);
+          transformed.add(KEY_PATH);
           continue;
         }
         rowKeyOnly = false;
@@ -120,7 +120,7 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
             CouchbaseUtils.andFilterAtIndex(hbaseScan.getFilter(), CouchbaseUtils.LAST_FILTER, new FirstKeyOnlyFilter()));
       }
     } else {
-      transformed.add(ROW_KEY_PATH);
+      transformed.add(KEY_PATH);
     }
 
 
@@ -144,8 +144,8 @@ public class CouchbaseRecordReader extends AbstractRecordReader implements Drill
     try {
       // Add Vectors to output in the order specified when creating reader
       for (SchemaPath column : getColumns()) {
-        if (column.equals(ROW_KEY_PATH)) {
-          MaterializedField field = MaterializedField.create(column, ROW_KEY_TYPE);
+        if (column.equals(KEY_PATH)) {
+          MaterializedField field = MaterializedField.create(column, DATA_TYPE);
           rowKeyVector = outputMutator.addField(field, VarBinaryVector.class);
         } else {
           getOrCreateFamilyVector(column.getRootSegment().getPath(), false);

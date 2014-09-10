@@ -29,6 +29,8 @@ import org.eigenbase.reltype.RelDataType;
 import org.eigenbase.reltype.RelDataTypeFactory;
 import org.eigenbase.sql.type.SqlTypeName;
 
+import com.couchbase.client.CouchbaseClient;
+
 public class DrillCouchbaseTable extends DrillTable implements DrillCouchbaseConstants {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DrillCouchbaseTable.class);
 
@@ -36,11 +38,26 @@ public class DrillCouchbaseTable extends DrillTable implements DrillCouchbaseCon
 
   public DrillCouchbaseTable(String storageEngineName, CouchbaseStoragePlugin plugin, CouchbaseScanSpec scanSpec) {
     super(storageEngineName, plugin, scanSpec);
-    try(HBaseAdmin admin = new HBaseAdmin(plugin.getConfig().getHBaseConf())) {
-      table = admin.getTableDescriptor(CouchbaseUtils.getBytes(scanSpec.getTableName()));
-    } catch (IOException e) {
-      logger.warn("Failure while loading table names for database '{}'.", storageEngineName, e);
-    }
+    List<URI> hosts = Arrays.asList(
+        new URI("http://127.0.0.1:8091/pools")
+      );
+
+    // Name of the Bucket to connect to
+    String bucket = "default";
+
+    // Password of the bucket (empty) string if none
+    String password = "";
+    CouchbaseClient client = new CouchbaseClient(hosts, bucket, password);
+    client.
+    // Store a Document
+    client.set("my-first-document", "Hello Couchbase!").get();
+
+    // Retreive the Document and print it
+    System.out.println(client.get("my-first-document"));
+
+    // Shutting down properly
+    client.shutdown();
+
   }
 
   @Override
@@ -48,7 +65,9 @@ public class DrillCouchbaseTable extends DrillTable implements DrillCouchbaseCon
     ArrayList<RelDataType> typeList = new ArrayList<>();
     ArrayList<String> fieldNameList = new ArrayList<>();
 
-    fieldNameList.add(ROW_KEY);
+    fieldNameList.add(CouchbaseConstants.KEY);
+    typeList.add(typeFactory.createSqlType(SqlTypeName.ANY));
+    fieldNameList.add(VALUE);
     typeList.add(typeFactory.createSqlType(SqlTypeName.ANY));
 
     Set<byte[]> families = table.getFamiliesKeys();

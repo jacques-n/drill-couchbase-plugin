@@ -40,48 +40,36 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
 
-// Class containing information for reading a single HBase region
-@JsonTypeName("hbase-region-scan")
+@JsonTypeName("couchbase-region-scan")
 public class CouchbaseSubScan extends AbstractBase implements SubScan {
   static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CouchbaseSubScan.class);
 
   @JsonProperty
   public final CouchbaseStoragePluginConfig storage;
   @JsonIgnore
-  private final CouchbaseStoragePlugin hbaseStoragePlugin;
-  private final List<HBaseSubScanSpec> regionScanSpecList;
-  private final List<SchemaPath> columns;
+  private final CouchbaseStoragePlugin plugin;
+
+  private String bucket;
 
   @JsonCreator
   public CouchbaseSubScan(@JacksonInject StoragePluginRegistry registry,
-                      @JsonProperty("storage") StoragePluginConfig storage,
-                      @JsonProperty("regionScanSpecList") LinkedList<HBaseSubScanSpec> regionScanSpecList,
-                      @JsonProperty("columns") List<SchemaPath> columns) throws ExecutionSetupException {
-    hbaseStoragePlugin = (CouchbaseStoragePlugin) registry.getPlugin(storage);
-    this.regionScanSpecList = regionScanSpecList;
+                      @JsonProperty("bucket") String bucket,
+                      @JsonProperty("storage") StoragePluginConfig storage) throws ExecutionSetupException {
+    plugin = (CouchbaseStoragePlugin) registry.getPlugin(storage);
+    this.bucket = bucket;
     this.storage = (CouchbaseStoragePluginConfig) storage;
-    this.columns = columns;
   }
 
   public CouchbaseSubScan(CouchbaseStoragePlugin plugin, CouchbaseStoragePluginConfig config,
-      List<HBaseSubScanSpec> regionInfoList, List<SchemaPath> columns) {
-    hbaseStoragePlugin = plugin;
+      String bucket) {
+    this.plugin = plugin;
     storage = config;
-    this.regionScanSpecList = regionInfoList;
-    this.columns = columns;
-  }
-
-  public List<HBaseSubScanSpec> getRegionScanSpecList() {
-    return regionScanSpecList;
+    this.bucket = bucket;
   }
 
   @JsonIgnore
   public CouchbaseStoragePluginConfig getStorageConfig() {
     return storage;
-  }
-
-  public List<SchemaPath> getColumns() {
-    return columns;
   }
 
   @Override
@@ -91,7 +79,7 @@ public class CouchbaseSubScan extends AbstractBase implements SubScan {
 
   @JsonIgnore
   public CouchbaseStoragePlugin getStorageEngine(){
-    return hbaseStoragePlugin;
+    return plugin;
   }
 
   @Override
@@ -102,7 +90,7 @@ public class CouchbaseSubScan extends AbstractBase implements SubScan {
   @Override
   public PhysicalOperator getNewWithChildren(List<PhysicalOperator> children) {
     Preconditions.checkArgument(children.isEmpty());
-    return new CouchbaseSubScan(hbaseStoragePlugin, storage, regionScanSpecList, columns);
+    return new CouchbaseSubScan(plugin, storage, bucket);
   }
 
   @Override
@@ -110,108 +98,9 @@ public class CouchbaseSubScan extends AbstractBase implements SubScan {
     return Iterators.emptyIterator();
   }
 
-  public static class HBaseSubScanSpec {
-
-    protected String tableName;
-    protected String regionServer;
-    protected byte[] startRow;
-    protected byte[] stopRow;
-    protected byte[] serializedFilter;
-
-    @parquet.org.codehaus.jackson.annotate.JsonCreator
-    public HBaseSubScanSpec(@JsonProperty("tableName") String tableName,
-                            @JsonProperty("regionServer") String regionServer,
-                            @JsonProperty("startRow") byte[] startRow,
-                            @JsonProperty("stopRow") byte[] stopRow,
-                            @JsonProperty("serializedFilter") byte[] serializedFilter,
-                            @JsonProperty("filterString") String filterString) {
-      if (serializedFilter != null && filterString != null) {
-        throw new IllegalArgumentException("The parameters 'serializedFilter' or 'filterString' cannot be specified at the same time.");
-      }
-      this.tableName = tableName;
-      this.regionServer = regionServer;
-      this.startRow = startRow;
-      this.stopRow = stopRow;
-      if (serializedFilter != null) {
-        this.serializedFilter = serializedFilter;
-      } else {
-        this.serializedFilter = CouchbaseUtils.serializeFilter(CouchbaseUtils.parseFilterString(filterString));
-      }
-    }
-
-    /* package */ HBaseSubScanSpec() {
-      // empty constructor, to be used with builder pattern;
-    }
-
-    @JsonIgnore
-    private Filter scanFilter;
-    public Filter getScanFilter() {
-      if (scanFilter == null &&  serializedFilter != null) {
-          scanFilter = CouchbaseUtils.deserializeFilter(serializedFilter);
-      }
-      return scanFilter;
-    }
-
-    public String getTableName() {
-      return tableName;
-    }
-
-    public HBaseSubScanSpec setTableName(String tableName) {
-      this.tableName = tableName;
-      return this;
-    }
-
-    public String getRegionServer() {
-      return regionServer;
-    }
-
-    public HBaseSubScanSpec setRegionServer(String regionServer) {
-      this.regionServer = regionServer;
-      return this;
-    }
-
-    public byte[] getStartRow() {
-      return startRow;
-    }
-
-    public HBaseSubScanSpec setStartRow(byte[] startRow) {
-      this.startRow = startRow;
-      return this;
-    }
-
-    public byte[] getStopRow() {
-      return stopRow;
-    }
-
-    public HBaseSubScanSpec setStopRow(byte[] stopRow) {
-      this.stopRow = stopRow;
-      return this;
-    }
-
-    public byte[] getSerializedFilter() {
-      return serializedFilter;
-    }
-
-    public HBaseSubScanSpec setSerializedFilter(byte[] serializedFilter) {
-      this.serializedFilter = serializedFilter;
-      this.scanFilter = null;
-      return this;
-    }
-
-    @Override
-    public String toString() {
-      return "HBaseScanSpec [tableName=" + tableName
-          + ", startRow=" + (startRow == null ? null : Bytes.toStringBinary(startRow))
-          + ", stopRow=" + (stopRow == null ? null : Bytes.toStringBinary(stopRow))
-          + ", filter=" + (getScanFilter() == null ? null : getScanFilter().toString())
-          + ", regionServer=" + regionServer + "]";
-    }
-
-  }
-
   @Override
   public int getOperatorType() {
-    return 1001;
+    return 2001;
   }
 
 }
